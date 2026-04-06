@@ -1,8 +1,6 @@
 package com.ramesh.scp_project
 
 import com.ramesh.scp_project.core.data.MediaDao
-import com.ramesh.scp_project.core.indexing.IndexingSummary
-import com.ramesh.scp_project.core.indexing.MediaIndexer
 import com.ramesh.scp_project.core.ranking.RankedMedia
 import com.ramesh.scp_project.core.search.SearchEngine
 
