@@ -127,6 +127,10 @@ fun SearchScreen(
     }
 }
 
+/**
+ * Displays overall application status, indexed document counts, and the next
+ * valid primary action based on permission/indexing state.
+ */
 @Composable
 private fun StatusCard(
     state: MainUiState,
@@ -210,6 +214,9 @@ private fun StatusCard(
     }
 }
 
+/**
+ * Shows a dismissible error surface for recoverable failures.
+ */
 @Composable
 private fun ErrorCard(
     message: String,
@@ -239,6 +246,9 @@ private fun ErrorCard(
     }
 }
 
+/**
+ * Full-screen loading indicator used while search results are being resolved.
+ */
 @Composable
 private fun LoadingState() {
     Box(
@@ -249,6 +259,9 @@ private fun LoadingState() {
     }
 }
 
+/**
+ * Explains why no results are visible so the empty state stays actionable.
+ */
 @Composable
 private fun EmptyResultsState(
     hasQuery: Boolean,
@@ -275,6 +288,10 @@ private fun EmptyResultsState(
     }
 }
 
+/**
+ * Renders a single indexed document with thumbnail, highlighted text, and
+ * metadata needed to understand why it matched.
+ */
 @Composable
 private fun SearchResultCard(
     result: RankedMedia,
@@ -326,6 +343,12 @@ private fun SearchResultCard(
     }
 }
 
+/**
+ * Safely binds a content URI thumbnail.
+ *
+ * Invalid or expired media URIs are common on Android, so failures clear the
+ * preview instead of crashing composition.
+ */
 @Composable
 private fun ResultThumbnail(uri: String) {
     AndroidView(
@@ -351,6 +374,12 @@ private fun ResultThumbnail(uri: String) {
     )
 }
 
+/**
+ * Highlights all query tokens within a result snippet.
+ *
+ * Matching is case-insensitive and supports repeated terms. The function
+ * returns the original text untouched when no meaningful highlight exists.
+ */
 private fun highlightQueryMatches(
     text: String,
     query: String
@@ -401,6 +430,9 @@ private fun highlightQueryMatches(
     }
 }
 
+/**
+ * Formats a timestamp for display in search results.
+ */
 private fun formatDate(timestamp: Long): String {
     return DateFormat.getDateTimeInstance(
         DateFormat.MEDIUM,
