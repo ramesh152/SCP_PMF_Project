@@ -4,17 +4,26 @@ import android.net.Uri
 import com.ramesh.scp_project.core.data.MediaDao
 import com.ramesh.scp_project.core.data.MediaEntity
 
+interface DocumentIndexingPipeline {
+    suspend fun index(
+        uri: Uri,
+        appSource: String = "MediaStore",
+        indexedAtMillis: Long = System.currentTimeMillis()
+    ): IndexingOutcome
+}
+
 class IndexingPipeline(
     private val ocrExtractor: OcrExtractor,
     private val financialDocumentFilter: FinancialDocumentFilter,
     private val embeddingGenerator: EmbeddingGenerator,
     private val mediaRepository: MediaRepository
-) {
+) : DocumentIndexingPipeline {
 
+    override
     suspend fun index(
         uri: Uri,
-        appSource: String = DEFAULT_APP_SOURCE,
-        indexedAtMillis: Long = System.currentTimeMillis()
+        appSource: String,
+        indexedAtMillis: Long
     ): IndexingOutcome {
         // OCR can fail on corrupted or protected media. Those cases are treated
         // as skippable outcomes so the batch job can continue.
@@ -41,7 +50,7 @@ class IndexingPipeline(
     }
 
     companion object {
-        private const val DEFAULT_APP_SOURCE = "MediaStore"
+        const val DEFAULT_APP_SOURCE = "MediaStore"
     }
 }
 

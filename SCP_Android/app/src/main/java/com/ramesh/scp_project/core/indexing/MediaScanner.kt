@@ -4,11 +4,15 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.provider.MediaStore
 
+interface MediaScanSource {
+    fun getLatestImageUris(limit: Int = 200): List<Uri>
+}
+
 class MediaScanner(
     private val contentResolver: ContentResolver
-) {
+) : MediaScanSource {
 
-    fun getLatestImageUris(limit: Int = 200): List<Uri> {
+    override fun getLatestImageUris(limit: Int): List<Uri> {
         if (limit <= 0) return emptyList()
 
         // A LinkedHashSet keeps insertion order while preventing duplicate
