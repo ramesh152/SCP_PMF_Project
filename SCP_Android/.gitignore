@@ -1,0 +1,28 @@
+# Android/Gradle generated output
+**/.gradle/
+**/build/
+**/captures/
+**/externalNativeBuild/
+**/.cxx/
+**/.kotlin/
+
+# Local machine configuration
+**/local.properties
+
+# IDE files
+.idea/
+**/.idea/
+*.iml
+
+# Signing keys and secrets
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+google-services.json
+
+# Logs and OS artifacts
+*.log
+.DS_Store
+Thumbs.db
