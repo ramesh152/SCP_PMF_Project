@@ -15,10 +15,16 @@ class IndexingPipeline(
         uri: Uri,
         appSource: String = DEFAULT_APP_SOURCE,
         indexedAtMillis: Long = System.currentTimeMillis()
-    ): MediaEntity? {
+    ): IndexingOutcome {
+        // OCR can fail on corrupted or protected media. Those cases are treated
+        // as skippable outcomes so the batch job can continue.
         val extractedText = ocrExtractor.extractText(uri)?.trim().orEmpty()
-        if (extractedText.isBlank()) return null
-        if (!financialDocumentFilter.matches(extractedText)) return null
+        if (extractedText.isBlank()) {
+            return IndexingOutcome.SkippedBlankText
+        }
+        if (!financialDocumentFilter.matches(extractedText)) {
+            return IndexingOutcome.SkippedNonFinancial
+        }
 
         val embedding = embeddingGenerator.generate(extractedText)
         val mediaEntity = MediaEntity(
@@ -31,7 +37,7 @@ class IndexingPipeline(
         )
 
         mediaRepository.insert(mediaEntity)
-        return mediaEntity
+        return IndexingOutcome.Indexed(mediaEntity)
     }
 
     companion object {
@@ -62,7 +68,12 @@ class KeywordFinancialDocumentFilter(
             "receipt",
             "payment",
             "total",
-            "amount"
+            "amount",
+            "gst",
+            "upi",
+            "tax",
+            "order id",
+            "paid"
         )
     }
 }
@@ -73,10 +84,30 @@ interface EmbeddingGenerator {
 
 class MockEmbeddingGenerator : EmbeddingGenerator {
     override suspend fun generate(text: String): FloatArray {
-        val seed = text.hashCode()
-        return FloatArray(8) { index ->
-            ((seed + index) % 1000) / 1000f
+        val normalized = text
+            .trim()
+            .lowercase()
+            .split(Regex("\\W+"))
+            .filter(String::isNotBlank)
+
+        if (normalized.isEmpty()) {
+            return FloatArray(EMBEDDING_SIZE)
         }
+
+        // This is still a placeholder embedding, but it is deterministic and
+        // stable across runs, which matters for predictable local search tests.
+        return FloatArray(EMBEDDING_SIZE) { index ->
+            normalized.sumOf { token ->
+                val tokenHash = token.hashCode().toLong()
+                ((tokenHash shr (index % 16)) and 0xFF).toInt()
+            }.let { bucket ->
+                (bucket % 1000) / 1000f
+            }
+        }
+    }
+
+    companion object {
+        private const val EMBEDDING_SIZE = 16
     }
 }
 
@@ -90,4 +121,10 @@ class MediaRepositoryImpl(
     override suspend fun insert(mediaEntity: MediaEntity) {
         mediaDao.insert(mediaEntity)
     }
+}
+
+sealed interface IndexingOutcome {
+    data class Indexed(val mediaEntity: MediaEntity) : IndexingOutcome
+    data object SkippedBlankText : IndexingOutcome
+    data object SkippedNonFinancial : IndexingOutcome
 }

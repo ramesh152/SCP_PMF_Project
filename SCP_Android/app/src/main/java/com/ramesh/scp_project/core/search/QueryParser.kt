@@ -14,6 +14,7 @@ class QueryParser {
 
         val timeFilterDays = when {
             "today" in lowercaseQuery -> 1
+            "yesterday" in lowercaseQuery -> 2
             "last week" in lowercaseQuery -> 7
             "last month" in lowercaseQuery -> 30
             else -> null
@@ -25,9 +26,13 @@ class QueryParser {
 
         val cleanedText = normalizedQuery
             .replace("today", "", ignoreCase = true)
+            .replace("yesterday", "", ignoreCase = true)
             .replace("last week", "", ignoreCase = true)
             .replace("last month", "", ignoreCase = true)
-            .replace(Regex("\\b(swiggy|amazon|zomato)\\b", RegexOption.IGNORE_CASE), "")
+            .replace(
+                Regex("\\b(swiggy|amazon|zomato|flipkart|paytm|phonepe|gpay)\\b", RegexOption.IGNORE_CASE),
+                ""
+            )
             .replace(Regex("\\s+"), " ")
             .trim()
 
@@ -42,7 +47,11 @@ class QueryParser {
         private val SUPPORTED_MERCHANTS = listOf(
             "swiggy",
             "amazon",
-            "zomato"
+            "zomato",
+            "flipkart",
+            "paytm",
+            "phonepe",
+            "gpay"
         )
     }
 }

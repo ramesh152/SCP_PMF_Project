@@ -29,6 +29,15 @@ class SearchEngine(
 
         if (candidates.isEmpty()) return emptyList()
 
+        if (baseText.isBlank()) {
+            // Blank searches act as a "recent documents" view so the app stays
+            // useful even before the user learns the query syntax.
+            return candidates
+                .sortedByDescending(MediaEntity::timestamp)
+                .take(MAX_RESULTS)
+                .map { media -> RankedMedia(media = media, score = 0f) }
+        }
+
         val queryEmbedding = embeddingGenerator.generate(baseText)
 
         return rankingEngine.rank(

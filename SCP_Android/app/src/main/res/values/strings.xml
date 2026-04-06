@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SCP Project</string>
+    <string name="permission_rationale">Allow photo access so the app can scan receipts and invoices stored on the device.</string>
+    <string name="permission_denied">Photo permission is required before indexing can start.</string>
+    <string name="permission_denied_forever">Photo permission is denied. Open app settings and allow access to continue.</string>
+    <string name="index_now">Index latest images</string>
+    <string name="open_settings">Open settings</string>
+    <string name="grant_access">Grant access</string>
+    <string name="search_hint">Search receipts, invoices, merchants</string>
 </resources>

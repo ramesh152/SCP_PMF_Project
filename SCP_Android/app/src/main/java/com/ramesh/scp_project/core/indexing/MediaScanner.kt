@@ -1,4 +1,4 @@
-package com.ramesh.scp_project.core.data
+package com.ramesh.scp_project.core.indexing
 
 import android.content.ContentResolver
 import android.net.Uri
@@ -9,7 +9,11 @@ class MediaScanner(
 ) {
 
     fun getLatestImageUris(limit: Int = 200): List<Uri> {
-        val uris = mutableListOf<Uri>()
+        if (limit <= 0) return emptyList()
+
+        // A LinkedHashSet keeps insertion order while preventing duplicate
+        // content URIs from being indexed twice in the same pass.
+        val uris = LinkedHashSet<Uri>(limit)
 
         val projection = arrayOf(MediaStore.Images.Media._ID)
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
@@ -29,10 +33,10 @@ class MediaScanner(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     id.toString()
                 )
-                uris.add(uri)
+                uris += uri
             }
         }
 
-        return uris
+        return uris.toList()
     }
 }

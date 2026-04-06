@@ -15,6 +15,9 @@ interface MediaDao {
     @Query("SELECT * FROM media ORDER BY timestamp DESC")
     fun getAll(): Flow<List<MediaEntity>>
 
+    @Query("SELECT COUNT(*) FROM media")
+    suspend fun count(): Int
+
     @Query("SELECT * FROM media WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
     fun getByTimeRange(start: Long, end: Long): Flow<List<MediaEntity>>
 
