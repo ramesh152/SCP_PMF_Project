@@ -9,7 +9,7 @@ import androidx.room.TypeConverters
 @Database(
     entities = [MediaEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(MediaEntity.FloatArrayConverter::class)
 abstract class AppDatabase : RoomDatabase() {

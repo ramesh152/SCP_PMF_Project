@@ -7,6 +7,7 @@
         android:maxSdkVersion="32" />
 
     <application
+        android:name=".ScpApplication"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@android:drawable/sym_def_app_icon"

@@ -3,7 +3,6 @@ package com.ramesh.scp_project.core.ui
 import android.net.Uri
 import android.widget.ImageView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,18 +21,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -42,6 +40,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.ramesh.scp_project.MainUiState
+import com.ramesh.scp_project.R
 import com.ramesh.scp_project.core.ranking.RankedMedia
 import java.text.DateFormat
 import java.util.Date
@@ -49,72 +49,78 @@ import java.util.Locale
 
 @Composable
 fun SearchScreen(
-    results: List<RankedMedia>,
-    onSearch: (String) -> Unit,
-    onResultClick: (RankedMedia) -> Unit,
-    modifier: Modifier = Modifier,
-    initialQuery: String = ""
+    state: MainUiState,
+    onQueryChanged: (String) -> Unit,
+    onSearch: () -> Unit,
+    onIndexRequest: () -> Unit,
+    onGrantPermission: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onDismissError: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var query by rememberSaveable { mutableStateOf(initialQuery) }
     val focusManager = LocalFocusManager.current
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    MaterialTheme {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            StatusCard(
+                state = state,
+                onIndexRequest = onIndexRequest,
+                onGrantPermission = onGrantPermission,
+                onOpenSettings = onOpenSettings
+            )
+
             OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.weight(1f),
-                label = { Text(text = "Search") },
+                value = state.query,
+                onValueChange = onQueryChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = stringResource(R.string.search_hint)) },
                 singleLine = true,
+                enabled = state.hasMediaPermission,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = {
                         focusManager.clearFocus()
-                        onSearch(query.trim())
+                        onSearch()
                     }
                 )
             )
 
-            Button(
-                onClick = {
-                    focusManager.clearFocus()
-                    onSearch(query.trim())
-                }
-            ) {
-                Text(text = "Go")
+            if (state.errorMessage != null) {
+                ErrorCard(
+                    message = state.errorMessage,
+                    onDismiss = onDismissError
+                )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (results.isEmpty()) {
-            EmptyResultsState(
-                hasQuery = query.isNotBlank(),
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = results,
-                    key = { rankedMedia -> rankedMedia.media.id }
-                ) { rankedMedia ->
-                    SearchResultCard(
-                        result = rankedMedia,
-                        query = query,
-                        onClick = { onResultClick(rankedMedia) }
-                    )
+            if (state.isLoadingResults) {
+                LoadingState()
+            } else if (state.results.isEmpty()) {
+                EmptyResultsState(
+                    hasQuery = state.query.isNotBlank(),
+                    hasPermission = state.hasMediaPermission,
+                    hasIndexedDocuments = state.indexedDocumentCount > 0,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = state.results,
+                        key = { rankedMedia -> rankedMedia.media.id }
+                    ) { rankedMedia ->
+                        SearchResultCard(
+                            result = rankedMedia,
+                            query = state.query
+                        )
+                    }
                 }
             }
         }
@@ -122,16 +128,147 @@ fun SearchScreen(
 }
 
 @Composable
+private fun StatusCard(
+    state: MainUiState,
+    onIndexRequest: () -> Unit,
+    onGrantPermission: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Receipt Search",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = state.statusMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Indexed documents: ${state.indexedDocumentCount}",
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when {
+                    state.hasMediaPermission -> {
+                        Button(
+                            onClick = onIndexRequest,
+                            enabled = !state.isIndexing
+                        ) {
+                            if (state.isIndexing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(text = stringResource(R.string.index_now))
+                            }
+                        }
+                    }
+                    state.isPermissionPermanentlyDenied -> {
+                        Button(onClick = onOpenSettings) {
+                            Text(text = stringResource(R.string.open_settings))
+                        }
+                    }
+                    state.shouldShowPermissionRationale || !state.hasRequestedMediaPermission -> {
+                        Button(onClick = onGrantPermission) {
+                            Text(text = stringResource(R.string.grant_access))
+                        }
+                    }
+                    else -> {
+                        Button(onClick = onGrantPermission) {
+                            Text(text = stringResource(R.string.grant_access))
+                        }
+                    }
+                }
+            }
+
+            state.lastIndexSummary?.let { summary ->
+                Text(
+                    text = "Last scan: ${summary.scannedCount} scanned, ${summary.indexedCount} indexed, " +
+                        "${summary.skippedCount} skipped, ${summary.failureCount} failed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorCard(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.size(12.dp))
+            Button(onClick = onDismiss) {
+                Text(text = "Dismiss")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
 private fun EmptyResultsState(
     hasQuery: Boolean,
+    hasPermission: Boolean,
+    hasIndexedDocuments: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val message = when {
+        !hasPermission -> "Grant media access to start scanning receipts and invoices."
+        !hasIndexedDocuments -> "No indexed documents yet. Run indexing to populate the local database."
+        hasQuery -> "No results found for the current query."
+        else -> "Run a search or browse your latest indexed documents."
+    }
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (hasQuery) "No results found." else "Enter a query to search.",
+            text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -141,13 +278,10 @@ private fun EmptyResultsState(
 @Composable
 private fun SearchResultCard(
     result: RankedMedia,
-    query: String,
-    onClick: () -> Unit
+    query: String
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -208,7 +342,11 @@ private fun ResultThumbnail(uri: String) {
                 shape = RoundedCornerShape(12.dp)
             ),
         update = { imageView ->
-            imageView.setImageURI(Uri.parse(uri))
+            runCatching {
+                imageView.setImageURI(Uri.parse(uri))
+            }.onFailure {
+                imageView.setImageDrawable(null)
+            }
         }
     )
 }
@@ -264,5 +402,8 @@ private fun highlightQueryMatches(
 }
 
 private fun formatDate(timestamp: Long): String {
-    return DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(timestamp))
+    return DateFormat.getDateTimeInstance(
+        DateFormat.MEDIUM,
+        DateFormat.SHORT
+    ).format(Date(timestamp))
 }
