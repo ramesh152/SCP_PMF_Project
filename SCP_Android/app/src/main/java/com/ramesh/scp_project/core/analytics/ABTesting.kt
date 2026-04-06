@@ -3,6 +3,7 @@ package com.ramesh.scp_project.core.analytics
 import android.content.Context
 import kotlin.math.absoluteValue
 
+//Test
 enum class RankingVariant {
     A_BASELINE,
     B_LTR
